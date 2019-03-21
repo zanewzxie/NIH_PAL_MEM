@@ -16,7 +16,6 @@ delete SubjTable_palRAMword.mat
 % only analyze the first sesssion. 
 for isub= allsub %1:length(allsub)
     
-  
 SubjTable(isub).PALTable=[];
 SubjTable(isub).subID=[];
 
@@ -101,17 +100,18 @@ for i=2:length(uniquesession)
 end
 end
     
-% %for all subjects only extract the first sesssion!
+% %for all subjects only extract the first 2 sesssions!
 sess=uniquesession(~excludesessions);
 
+% subjects sessions to edit mannual
 if isub==38;
-    sess=[1];  
+    sess=[1];   % 38 session 0 is practice 
 elseif isub==37 
-     sess=0;
+     sess=0;   
 elseif isub==42
      sess=[0 1];
 elseif isub==43 
-     sess=[2 3 4 5];
+     sess=[2 3 4 5]; % 43 has no session 0, and session 1 is practice  
 elseif isub==36 
     sess=[0 1 2];      
 elseif isub==34 
@@ -173,7 +173,6 @@ SubjTable(isub).alignedEvents=alignedEvents;
 SubjTable(isub).PALTable=array2table([{alignedEvents.STUDY_PAIR.list}' {alignedEvents.STUDY_PAIR.serialpos}' {alignedEvents.TEST_PROBE.probepos}' {alignedEvents.STUDY_PAIR.study_1}' {alignedEvents.STUDY_PAIR.study_2}' {alignedEvents.TEST_PROBE.probe_word}' {alignedEvents.TEST_PROBE.expecting_word}' {alignedEvents.TEST_PROBE.resp_word}' {alignedEvents.TEST_PROBE.correct}'],...
     'VariableNames',{'list' 'StudyPosition' 'ProbePosition' 'item1' 'item2' 'probe' 'expected' 'response' 'correct'});
  
-
 idx=all(cellfun(@isempty,SubjTable(isub).PALTable{:,:}),2);
 SubjTable(isub).PALTable(idx,:)=[];
 
@@ -182,14 +181,10 @@ end
 
 end
 
-
 save SubjTable_palRAMword.mat SubjTable;
 
 %% extract all unique probe words
-
-% SubAverageAccurateReport(allsub) - SubAverageMissReport(allsub);
-
-%% create stimuli by subject matrix. 
+% create stimuli by subject matrix. 
 
 uniqueprobewords = textread('RAM_wordpool.txt', '%s', 'delimiter', '\n', 'whitespace', '');
 uniqueresponsewords=uniqueprobewords;
@@ -257,6 +252,7 @@ uniqueresponse_subID_uniqueword_SUBwordreduced = uniqueresponse_subID_uniqueword
 uniqueresponse_subID_uniqueword_SUBwordreduced_acc=uniqueresponse_subID_uniqueword_acc(remainword,remainsub)>0;
 
 [nword,nsub]=size(uniqueprobe_subID_uniqueword_SUBwordreduced);
+
 nter=2000;
 clear ProbeCorrelationFold  ResponseCorrelationFold  Response_probe_CorrelationFold
 for iter=1:nter
@@ -288,9 +284,9 @@ for iter=1:nter
    Response_probe_CorrelationFold(iter)=2*Response_probe_CorrelationFold(iter)/(Response_probe_CorrelationFold(iter)+1);
    
 end
-p1 = sum(ProbeCorrelationFold<0)/nter
-p2 = sum(ResponseCorrelationFold<0)/nter
-p3 = sum(Response_probe_CorrelationFold<0)/nter
+p1 = sum(ProbeCorrelationFold<=0)/nter
+p2 = sum(ResponseCorrelationFold<=0)/nter
+p3 = sum(Response_probe_CorrelationFold<=0)/nter
 
 
 Probememorability = mean(uniqueprobe_subID_uniqueword_SUBwordreduced,2) .* (sum(uniqueprobe_subID_uniqueword_SUBwordreduced_acc,2)./sum(uniqueprobe_subID_uniqueword_SUBwordreduced,2));

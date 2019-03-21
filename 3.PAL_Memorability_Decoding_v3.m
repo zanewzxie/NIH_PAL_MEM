@@ -104,7 +104,7 @@ for isubtem=1:length(ToAnalyzeSub)
         chan=chan(ismember(chan,uniqueallchan));
         
         % get rid of channels that are at the boundary of ROI and difficult
-        % to normalized
+        % to normalized or being shifted
         if strcmp(subj,'NIH026')
             chan=chan(~ismember(chan,{'G27'}));
         elseif strcmp(subj,'NIH029')
@@ -155,13 +155,10 @@ save WordtoAnalyze_ATL_2ROIs.mat WordtoAnalyze  memratio
 
 %% select the subjects based on availbale number of trials, and available numbers of electrodes
 % only analyze subject with greater 5% accuracy. 
-
-
 % Memory intrusion analysis
+
 uniquewordsID_10=PAL_Memo.uniquewordsID_10;
-
 MissRetrievedWords=[];
-
 medianMemor = median(PAL_Memo.Responsememorability);
 
 MemorabilityMisReportMean(1:66)=nan;
@@ -199,14 +196,10 @@ for isub=allsub %1:length(allsub)
          
         [h,p(isub),ci,stat]=ttest(MemorabilityMisReport(~isnan(MemorabilityMisReport)),medianMemor,'tail','right');
         r(isub)= stat.tstat/abs(stat.tstat)* sqrt(stat.tstat^2/(stat.tstat^2+stat.df));
-        
-%        [pz,h]= signrank(MemorabilityMisReport(~isnan(MemorabilityMisReport)),medianMemor,'tail','right')
-%         zm(isub)=norminv(1-pz);
+
     end
-    
     MissRetrievedWords=[];
-    MemorabilityMisReport =[];
-    
+    MemorabilityMisReport =[];   
 end
 
 
@@ -231,12 +224,11 @@ hold on;plot([ medianMemor medianMemor], [0 200],'r-','linewidth',5)
 % WordtoAnalyzeTReduced=WordtoAnalyzeTReduced([WordtoAnalyzeTReduced.meanACC{1:end}]>0.05,:);
 WordtoAnalyzeT=struct2table(WordtoAnalyze);
 WordtoAnalyzeTReduced=WordtoAnalyzeT(memratio>0,:);
-WordtoAnalyzeTReduced=WordtoAnalyzeTReduced([WordtoAnalyzeTReduced.chanNum{1:end}]>=2,:);
+WordtoAnalyzeTReduced=WordtoAnalyzeTReduced([WordtoAnalyzeTReduced.chanNum{1:end}]>=3,:);
 WordtoAnalyzeTReduced=WordtoAnalyzeTReduced(WordtoAnalyzeTReduced.subID~=35,:);
+% WordtoAnalyzeTReduced=WordtoAnalyzeTReduced([WordtoAnalyzeTReduced.WordCount{1:end}]>60,:);
 
 save WordtoAnalyzeTReduced.mat WordtoAnalyzeTReduced
-% WordtoAnalyzeTReduced=WordtoAnalyzeTReduced([WordtoAnalyzeTReduced.WordCount{1:end}]>60,:);
-% 
 
 %%
 %%- FILTERING OPTIONS
@@ -247,7 +239,7 @@ WHICH_BANDS     = 'standard';  %WHICH_BANDS = 'standard' 'NoiseAnalysis' 'LowHig
 
 % freqBandYticksSplit=[exp(linspace(log(2),log(16),16));exp(linspace(log(70),log(150),16))]; % only bin the data into 3 bins.
 
-freqBandYticksSplit=[exp(linspace(log(4),log(12),10));exp(linspace(log(70),log(150),10))]; % only bin the data into 3 bins.
+freqBandYticksSplit=[exp(linspace(log(4),log(16),10));exp(linspace(log(70),log(150),10))]; % only bin the data into 3 bins.
 
 waveletFreqs2 = reshape(freqBandYticksSplit',1,20);
    
@@ -255,9 +247,9 @@ waveletFreqs3 = exp(linspace(log(4),log(150),30));
 
 freqBandYticks = [2   4   8   16   32   70   150]; % overwrite the old ticks.
 WordtoAnalyzeTReduced
-mkdir('OutputFiles_Decoding_ATL_median_BioWolf_highacc2')
+mkdir('ATL_datafile')
 curpath=pwd;
-outpath=fullfile(curpath,'OutputFiles_Decoding_ATL_median_BioWolf_highacc2');
+outpath=fullfile(curpath,'ATL_datafile');
 % loop through subjects.
 %%
 MemPercent=prctile(PAL_Memo.Responsememorability,[0 33 67 100]);
@@ -265,7 +257,7 @@ MemPercent=prctile(PAL_Memo.Responsememorability,[0 33 67 100]);
 for isubtem=1:size(WordtoAnalyzeTReduced,1)
     
     clear SubjResults
-    
+  
     isub =  WordtoAnalyzeTReduced.subID(isubtem)
     % duration variable across subjects
     % nanmean(SubjTable(isub).RTtemp(SubjTable(isub).RTtemp>50)) + 500 + 1000
@@ -317,7 +309,7 @@ if length(chan)>=3 % Ony analyze the data from available channel.
         RecallRawEEGAll{iss} = RecallRawEEG;
         
         clfig=figure(2000);clf
-        clnWeights=[1.8 1.8];
+        clnWeights=[2.3 2.3];
         FIG_TITLE= ['Subj' num2str(isub) '--Session' num2str(iss) 'Probe_cleaning'];
         [iChanClean1,iEvClean1,strClean] = jwCleanEEGevents_v01(ProbeRawEEG,clfig,FIG_TITLE,clnWeights);
         disp(strClean);
