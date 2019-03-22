@@ -10,8 +10,8 @@ addpath(genpath('/Volumes/Zane/NIH_NINDS/Data_InProgress/SpecFuN'));
 allsub=[26:63 66];
 rootEEGdir = '/Volumes/Zane/NIH_FRNU_ROOT';                      %office-local
 
-load('SubjTable_palRAMword.mat')
-load('PAL_Memo_PALRAM.mat')
+load(fullfile(pwd,'TemOutPut/SubjTable_palRAMword.mat'));
+load(fullfile(pwd,'TemOutPut/PAL_Memo_PALRAM.mat'));
 
 ToAnalyzeSub=allsub;
 % PAL_Memo.Combinedmemorability = zscore(PAL_Memo.Probememorability) + (PAL_Memo.Responsememorability - nanmean(PAL_Memo.Responsememorability))./nanstd(PAL_Memo.Responsememorability);
@@ -54,7 +54,7 @@ for isubtem=1:length(ToAnalyzeSub)
         
         
         % got to subject's folder and identify ATL.
-        atlasfilename=fullfile(rootEEGdir,[subj '/tal/atlas/atlas_monopolar_simple.csv']);
+        atlasfilename=fullfile(rootEEGdir,[subj '/tal/atlas/atlas_bipolar_simple.csv']);
         Atlas    = readtable(atlasfilename);
         
         ATLchan     = Atlas.chanName(strcmp(Atlas.label_wittig,'Anterior Temporal Lobe') & (strcmp(Atlas.label_desikan,'Inferior temporal gyrus')...
@@ -74,53 +74,70 @@ for isubtem=1:length(ToAnalyzeSub)
         allwords=WordtoAnalyze(isubtem).Word;
         
         for iev=1:length(SubjTable(isub).alignedEvents.TEST_PROBE)
-            SubjTable(isub).alignedEvents.TEST_PROBE(iev).eegfile =  strrep(SubjTable(isub).alignedEvents.TEST_PROBE(iev).eegfile,'noreref','processed');
+            SubjTable(isub).alignedEvents.TEST_PROBE(iev).eegfile =  strrep(SubjTable(isub).alignedEvents.TEST_PROBE(iev).eegfile,'noreref','processedBP');           
+            SubjTable(isub).alignedEvents.TEST_PROBE(iev).eegfile_processed =  strrep(SubjTable(isub).alignedEvents.TEST_PROBE(iev).eegfile,'processedBP','processed');
             SubjTable(isub).alignedEvents.TEST_PROBE(iev).eegfile =  strrep(SubjTable(isub).alignedEvents.TEST_PROBE(iev).eegfile,'/Volumes/Shares/FRNU/data/eeg',rootEEGdir);
             
-            SubjTable(isub).alignedEvents.RecallEvent(iev).eegfile =  strrep(SubjTable(isub).alignedEvents.RecallEvent(iev).eegfile,'noreref','processed');
+            SubjTable(isub).alignedEvents.RecallEvent(iev).eegfile =  strrep(SubjTable(isub).alignedEvents.RecallEvent(iev).eegfile,'noreref','processedBP');
+            SubjTable(isub).alignedEvents.RecallEvent(iev).eegfile_processed =  strrep(SubjTable(isub).alignedEvents.RecallEvent(iev).eegfile,'processedBP','processed');            
             SubjTable(isub).alignedEvents.RecallEvent(iev).eegfile =  strrep(SubjTable(isub).alignedEvents.RecallEvent(iev).eegfile,'/Volumes/Shares/FRNU/data/eeg',rootEEGdir);
         end
         
         WordtoAnalyze(isubtem).SubjTable=SubjTable(isub);
         % here exclude bad channels based on Julio's script.
+        uniquesession_pro=unique({SubjTable(isub).alignedEvents.TEST_PROBE.eegfile_processed});
         uniquesession=unique({SubjTable(isub).alignedEvents.TEST_PROBE.eegfile});
         allssession=[SubjTable(isub).alignedEvents.TEST_PROBE.session];
         
         allbadchan=[];availablechan=[];
-        for iss=1:length(uniquesession)
-            badchans{iss}=load(fullfile(uniquesession{iss},'bad_chans.mat'))
+        for iss=1:length(uniquesession_pro)
+            badchans{iss}=load(fullfile(uniquesession_pro{iss},'bad_chans.mat'))
             allbadchan=[allbadchan;badchans{iss}.bad_chans];
             
             % to the session folder and identify the channels are only sepecific to
             % the avaialble session.
+            
             temptablesfilename =fullfile(uniquesession{iss},'variance.csv');
-            temptables    = readtable(temptablesfilename);
-            availablechan=[availablechan; temptables.chanName];
+            
+            D=dir(uniquesession{iss});
+            temchannames={D.name};
+            temchannames=temchannames(3:end-1);
+            availablechan=[availablechan temchannames];
         end
         uniqueallchan=unique(availablechan);
+        
+        clear Forward Backward
         if ~isempty(allbadchan)
-        chan=chan(~ismember(chan,allbadchan));
+            for ic=1:length(uniqueallchan)
+                for ibad=1:length(allbadchan)
+                    Forward(ibad,ic)=strncmp(allbadchan{ibad},uniqueallchan{ic},length(allbadchan{ibad}));
+                    Backward(ibad,ic)=strncmp(allbadchan{ibad},uniqueallchan{ic}(end-length(allbadchan{ibad})+1:end),length(allbadchan{ibad}));
+                end
+            end
+            uniqueallchangood=uniqueallchan(mean((Forward+Backward),1)==0);  
+        else
+            uniqueallchangood=uniqueallchan;              
         end
-        chan=chan(ismember(chan,uniqueallchan));
+       
+        chan=chan(ismember(chan,uniqueallchangood));
         
         % get rid of channels that are at the boundary of ROI and difficult
-        % to normalized
+        % to normalized or being shifted
         if strcmp(subj,'NIH026')
-            chan=chan(~ismember(chan,{'G27'}));
+            chan=chan(~ismember(chan,{'G26-G27'}));
         elseif strcmp(subj,'NIH029')
-            chan=chan(~ismember(chan,{'G17'}));
+            chan=chan(~ismember(chan,{'G17-G18'}));
         elseif strcmp(subj,'NIH032')
             chan=chan(~ismember(chan,{'ROF3'}));
         elseif strcmp(subj,'NIH036')
-            chan=chan(~ismember(chan,{'OF3','OF4','TT_sh6','TT6','AST_sh4','AST4'}));
+            chan=chan(~ismember(chan,{'OF3-OF4','OF4','TT_sh6','TT6','AST_sh4','AST4'}));
         elseif strcmp(subj,'NIH062')
-            chan=chan(~ismember(chan,{'OF4'}));
+            chan=chan(~ismember(chan,{'OF3-OF4'}));
         elseif strcmp(subj,'NIH066')
-            chan=chan(~ismember(chan,{'TG84', 'TG123'}));
+            chan=chan(~ismember(chan,{'TG65-TG66', 'TG49-TG65'}));
         end
         
-        ATLchan=ATLchan(ismember(ATLchan,chan));
-        
+        ATLchan=ATLchan(ismember(ATLchan,chan));       
         superiorATLchan=superiorATLchan(ismember(superiorATLchan,chan));
         middleATLchan=middleATLchan(ismember(middleATLchan,chan));
         inferiorATLchan=inferiorATLchan(ismember(inferiorATLchan,chan));
@@ -155,13 +172,10 @@ save WordtoAnalyze_ATL_2ROIs.mat WordtoAnalyze  memratio
 
 %% select the subjects based on availbale number of trials, and available numbers of electrodes
 % only analyze subject with greater 5% accuracy. 
-
-
 % Memory intrusion analysis
+
 uniquewordsID_10=PAL_Memo.uniquewordsID_10;
-
 MissRetrievedWords=[];
-
 medianMemor = median(PAL_Memo.Responsememorability);
 
 MemorabilityMisReportMean(1:66)=nan;
@@ -199,14 +213,10 @@ for isub=allsub %1:length(allsub)
          
         [h,p(isub),ci,stat]=ttest(MemorabilityMisReport(~isnan(MemorabilityMisReport)),medianMemor,'tail','right');
         r(isub)= stat.tstat/abs(stat.tstat)* sqrt(stat.tstat^2/(stat.tstat^2+stat.df));
-        
-%        [pz,h]= signrank(MemorabilityMisReport(~isnan(MemorabilityMisReport)),medianMemor,'tail','right')
-%         zm(isub)=norminv(1-pz);
+
     end
-    
     MissRetrievedWords=[];
-    MemorabilityMisReport =[];
-    
+    MemorabilityMisReport =[];   
 end
 
 
@@ -231,12 +241,11 @@ hold on;plot([ medianMemor medianMemor], [0 200],'r-','linewidth',5)
 % WordtoAnalyzeTReduced=WordtoAnalyzeTReduced([WordtoAnalyzeTReduced.meanACC{1:end}]>0.05,:);
 WordtoAnalyzeT=struct2table(WordtoAnalyze);
 WordtoAnalyzeTReduced=WordtoAnalyzeT(memratio>0,:);
-WordtoAnalyzeTReduced=WordtoAnalyzeTReduced([WordtoAnalyzeTReduced.chanNum{1:end}]>=2,:);
+WordtoAnalyzeTReduced=WordtoAnalyzeTReduced([WordtoAnalyzeTReduced.chanNum{1:end}]>=2,:); % at least 1 channel;
 WordtoAnalyzeTReduced=WordtoAnalyzeTReduced(WordtoAnalyzeTReduced.subID~=35,:);
-
-save WordtoAnalyzeTReduced.mat WordtoAnalyzeTReduced
 % WordtoAnalyzeTReduced=WordtoAnalyzeTReduced([WordtoAnalyzeTReduced.WordCount{1:end}]>60,:);
-% 
+delete WordtoAnalyzeTReduced.mat
+save WordtoAnalyzeTReduced.mat WordtoAnalyzeTReduced
 
 %%
 %%- FILTERING OPTIONS
@@ -255,9 +264,9 @@ waveletFreqs3 = exp(linspace(log(4),log(150),30));
 
 freqBandYticks = [2   4   8   16   32   70   150]; % overwrite the old ticks.
 WordtoAnalyzeTReduced
-mkdir('MTL')
+mkdir('MTL_datafile')
 curpath=pwd;
-outpath=fullfile(curpath,'MTL');
+outpath=fullfile(curpath,'MTL_datafile');
 % loop through subjects.
 %%
 MemPercent=prctile(PAL_Memo.Responsememorability,[0 33 67 100]);
@@ -265,7 +274,7 @@ MemPercent=prctile(PAL_Memo.Responsememorability,[0 33 67 100]);
 for isubtem=1:size(WordtoAnalyzeTReduced,1)
     
     clear SubjResults
-    
+  
     isub =  WordtoAnalyzeTReduced.subID(isubtem)
     % duration variable across subjects
     % nanmean(SubjTable(isub).RTtemp(SubjTable(isub).RTtemp>50)) + 500 + 1000
@@ -299,25 +308,25 @@ if length(chan)>=2 % Ony analyze the data from available channel.
     
     for iss=1:length(uniquesessions)
         iss
-        sessionGA_Probe=gete_ms('global_avg_good',TEST_PROBE_Event(allssession==uniquesessions(iss)),duration,offset,buffer,[180 ],'low',2,resamp);
-        sessionGA_Recall=gete_ms('global_avg_good',Recall_Event(allssession==uniquesessions(iss)),duration,offset,buffer,[180 ],'low',2,resamp);
-        
+%         sessionGA_Probe=gete_ms('global_avg_good',TEST_PROBE_Event(allssession==uniquesessions(iss)),duration,offset,buffer,[180 ],'low',2,resamp);
+%         sessionGA_Recall=gete_ms('global_avg_good',Recall_Event(allssession==uniquesessions(iss)),duration,offset,buffer,[180 ],'low',2,resamp);
+%         
         clear ProbeRawEEG ProbePowerlog WavePow_log RecallRawEEG
         parfor ic=1:length(chan)
             % get EEG
             ic
             ProbeRawEEG(ic,:,:)=gete_ms(chan{ic},TEST_PROBE_Event(allssession==uniquesessions(iss)),duration,offset,buffer,[180 ],'low',2,resamp);
-            ProbeRawEEG(ic,:,:)=squeeze(ProbeRawEEG(ic,:,:))-sessionGA_Probe; % reference to global average of all electrode within that session.'
+            ProbeRawEEG(ic,:,:)=squeeze(ProbeRawEEG(ic,:,:)); %-sessionGA_Probe; % reference to global average of all electrode within that session.'
             
             RecallRawEEG(ic,:,:)=gete_ms(chan{ic},Recall_Event(allssession==uniquesessions(iss)),duration,offset,buffer,[180 ],'low',2,resamp);
-            RecallRawEEG(ic,:,:)=squeeze(RecallRawEEG(ic,:,:))-sessionGA_Recall; % reference to global average of all electrode within that session.'
+            RecallRawEEG(ic,:,:)=squeeze(RecallRawEEG(ic,:,:)); %-sessionGA_Recall; % reference to global average of all electrode within that session.'
         end
         
         ProbeRawEEGAll{iss} = ProbeRawEEG;
         RecallRawEEGAll{iss} = RecallRawEEG;
         
         clfig=figure(2000);clf
-        clnWeights=[1.8 1.8];
+        clnWeights=[2.3 2.3];
         FIG_TITLE= ['Subj' num2str(isub) '--Session' num2str(iss) 'Probe_cleaning'];
         [iChanClean1,iEvClean1,strClean] = jwCleanEEGevents_v01(ProbeRawEEG,clfig,FIG_TITLE,clnWeights);
         disp(strClean);
@@ -450,7 +459,6 @@ if length(chan)>=2 % Ony analyze the data from available channel.
 end 
 
 end
-
 
 
 %% decode using SubjResults
@@ -1257,18 +1265,30 @@ end
 
 % print(gcf,'scaled_decodingacc','-dpdf','-bestfit');
 %% PLOT ALL Electrodes
-close all
+% close all
 
 bp = brainplotter()
 bd = braindata2()
 bd.loadAverage()
-bp =bd.ezplot(bp)
-bp.view('ventral')
 
-for isub = 1:size(SubjResults,2)
-    
-    
-    if ~isempty(SubjResults.allcleanChans)
+            % Load pial version of each hemisphere in jacksheet
+            if isfield('docs',bd) && isfield(bd.docs, 'jacksheet')
+                hemis = unique(bd.docs.jacksheet.whichHemi);
+                hemis = hemis(~cellfun(@isempty, hemis));
+                for i = 1
+                    bp.loadSurface(bd, ['pial ' hemis{i}], 1);
+                end
+            else
+                bp.loadSurface(bd, 'pial lh', 1);
+            end
+
+bp =bd.ezplot(bp)
+bp.view('right')
+   
+%%
+for isubtem = 1:size(WordtoAnalyzeTReduced,1)
+
+    isub =  WordtoAnalyzeTReduced.subID(isubtem)
         
         % identify and limit the electrodes for analysis, only look at the surface ALT electrodes.
         subj     = ['NIH0' num2str(isub)];
@@ -1277,11 +1297,11 @@ for isub = 1:size(SubjResults,2)
         bd = braindata2(subj,rootEEGdir)
         
         % load each electrodes mesh info on the standardized brain
-        t  = bd.roi.lead_mesh;
+        t  = bd.roi.lead_mesh_bp;
         
         clear elecs
         % get example electrodes
-        elecs=SubjResults.allcleanChans;
+        elecs=WordtoAnalyzeTReduced.MTLchan{isubtem};
         
         
         % Electrodes to exclude for misalignment
@@ -1313,23 +1333,22 @@ for isub = 1:size(SubjResults,2)
             
             % get surface to plot on (left or right hemisphere)
             s = ['pial_' t.whichHemi{chan}];
+            
+            if strcmp(s, 'pial_lh')
             bp.plotPoint(t(chan,:),...
                 'radius',1,...
                 'mesh_clust_d',0,...
-                'alpha',0.25,...
-                'color',[0.10 0.10 0.10],...
-                'surf',s,'label', elecs{j})
+                'alpha',1,...
+                'color',[0.50 0.10 0.10],'surf',s );%;,'label', elecs{j}) %,
             
             %   mesh_clust_d - If you are passing mesh index lists, by default a point is placed at the first mesh index in the list. However, for sulcus-
             %             spanning electrodes, we may want to plot 2+ points at each group of mesh indices. Pass a distance here if you want to clusterize
             %             such that mesh_indices >=~ mesh_clust_d apart will be plotted as separate points. Default is 3. 0 to just use the first index.
             % ,...
-            
-            
+            end
         end
         
-        keyboard
-    end
+%         keyboard
     
 end
 

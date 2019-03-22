@@ -57,9 +57,9 @@ classificationSVM = fitcsvm(...
     'KernelScale', 'auto', ...
     'Standardize', true, ...
     'ClassNames', [single(0); single(1)],...
-    'OutlierFraction',0.05, ...
-    'BoxConstraint',0.1);
+    'BoxConstraint',1);
 %     'OptimizeHyperparameters','auto');
+%     'OutlierFraction',0.05, ...
 
 
 
@@ -81,7 +81,7 @@ predictors = inputTable(:,1:end-1);  % us
 response = table2array(inputTable(:,end)); % the last column is always the condition label
 
 % Perform cross-validation
-partitionedModel = crossval(trainedClassifier.ClassificationSVM, 'KFold', 3);
+partitionedModel = crossval(trainedClassifier.ClassificationSVM, 'KFold', 4);
 
 % Compute validation predictions
 [validationPredictions, validationScores] = kfoldPredict(partitionedModel);
