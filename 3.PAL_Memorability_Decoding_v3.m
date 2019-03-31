@@ -166,12 +166,15 @@ medianMemor = median(PAL_Memo.Responsememorability);
 
 MemorabilityMisReportMean(1:66)=nan;
 
-for isub=allsub %1:length(allsub)
+for isubtem=1:length(ToAnalyzeSub) %1:length(allsub)
     
+   isub=ToAnalyzeSub(isubtem);
+
+            
     if size(SubjTable(isub).PALTable,1)>1
         
+        %Intrusion. 
         MissRetrievedWords=[SubjTable(isub).PALTable.response(~[SubjTable(isub).PALTable.correct{1:end}])];
-        AccResponseWords= unique([SubjTable(isub).PALTable.response([SubjTable(isub).PALTable.correct{1:end}]>0)]);
         
         for i=1:length(MissRetrievedWords)
             if strcmp(num2str(MissRetrievedWords{i}),'-999')| strcmp(MissRetrievedWords{i},'<>')
@@ -197,11 +200,42 @@ for isub=allsub %1:length(allsub)
          allcountintro(isub)=length(uniquemisrepord);
         
          
-        [h,p(isub),ci,stat]=ttest(MemorabilityMisReport(~isnan(MemorabilityMisReport)),medianMemor,'tail','right');
+        [h,p,ci,stat]=ttest(MemorabilityMisReport(~isnan(MemorabilityMisReport)),medianMemor,'tail','right');
         r(isub)= stat.tstat/abs(stat.tstat)* sqrt(stat.tstat^2/(stat.tstat^2+stat.df));
         
 %        [pz,h]= signrank(MemorabilityMisReport(~isnan(MemorabilityMisReport)),medianMemor,'tail','right')
 %         zm(isub)=norminv(1-pz);
+
+        %Retrieval RTs. 
+        % extrace the memorability score for each retrieval word. 
+        clear Acc RT highmask lowmask memorability SDRT MemorabilityAccResponseWords
+        Acc=[SubjTable(isub).PALTable.correct{1:end}]>0;
+        RT=[SubjTable(isub).PALTable.RT{1:end}];
+        AccResponseWords= ([SubjTable(isub).PALTable.response]); 
+        
+        RTSD = std(RT(RT >0));
+        for i=1:length(AccResponseWords)
+            if strcmp(num2str(AccResponseWords{i}),'-999')| strcmp(AccResponseWords{i},'<>')
+                AccResponseWords{i} = 'NORESPONSE';
+            end
+        end
+        
+        for iq=1:length(AccResponseWords)
+            if  any(ismember(uniquewordsID_10,AccResponseWords(iq)))
+                MemorabilityAccResponseWords(iq)= PAL_Memo.Responsememorability(ismember(uniquewordsID_10,AccResponseWords(iq)));
+            else
+                MemorabilityAccResponseWords(iq)=NaN;
+            end
+        end
+
+        cormask = ~isnan(MemorabilityAccResponseWords);
+        
+        Correlation_MRT_s(isub)=corr(MemorabilityAccResponseWords(cormask)',log(RT(cormask))','type','pearson');
+        countN(isub)=sum(cormask);
+        Acc_ofsub(isub)=mean(Acc);
+        
+        MemRTs(isub) = median(RT(cormask));
+      
     end
     
     MissRetrievedWords=[];
@@ -209,17 +243,23 @@ for isub=allsub %1:length(allsub)
     
 end
 
+zrs = .5.*[log(1+Correlation_MRT_s)-log(1-Correlation_MRT_s)]
+
+%%
 
 % rs=r(WordtoAnalyzeTReduced.subID);
 % rs=rs(~isnan(rs));
 % zrs=0.5*log((1+rs)./(1-rs));
-% [h,z,ci]=signrank(zrs)
+% [h,z,ci]=signrank(zrs)cle
+IncludeIDRT=find(countN>0);
+IncludedMemRTs = MemRTs(IncludeIDRT);
 
 [h,z,ci]=signrank(MemorabilityMisReportMean(~isnan(MemorabilityMisReportMean)),medianMemor)
 toincludeid=find(~isnan(MemorabilityMisReportMean));
 nter=2000;
 for i=1:nter
    boostrap_median(i)= median(MemorabilityMisReportMean(randsample(toincludeid,length(toincludeid),'true')));
+   boostrap_medianRT(i,:)= mean(MemRTs(randsample(IncludeIDRT,length(IncludeIDRT),'true')));
 end
 p=1-sum((boostrap_median-medianMemor)>0)/nter
 figure;hist(boostrap_median,11)
@@ -255,9 +295,9 @@ waveletFreqs3 = exp(linspace(log(4),log(150),30));
 
 freqBandYticks = [2   4   8   16   32   70   150]; % overwrite the old ticks.
 WordtoAnalyzeTReduced
-mkdir('MTL')
+mkdir('ATL')
 curpath=pwd;
-outpath=fullfile(curpath,'MTL');
+outpath=fullfile(curpath,'ATL');
 % loop through subjects.
 %%
 MemPercent=prctile(PAL_Memo.Responsememorability,[0 33 67 100]);
