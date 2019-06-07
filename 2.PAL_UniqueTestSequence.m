@@ -1,15 +1,13 @@
 
-% find unique sequence of PAL association. 
+% find unique sequence of PAL association.
 
 allsub=[26:66];
-% first make a big table. 
+% first make a big table.
 BIGTABLE=[];
 for isub=allsub
-    
-if size(SubjTable(isub).PALTable,1)>1
-    BIGTABLE=vertcat(BIGTABLE,SubjTable(isub).PALTable); 
-end
-
+    if size(SubjTable(isub).PALTable,1)>1
+        BIGTABLE=vertcat(BIGTABLE,SubjTable(isub).PALTable);
+    end
 end
 
 uniqueprobewords = textread('RAM_wordpool.txt', '%s', 'delimiter', '\n', 'whitespace', '');
@@ -21,13 +19,12 @@ BIGTABLE=BIGTABLE(ismember(BIGTABLE.expected,uniqueresponsewords) & ismember(BIG
 
 ReducedBigTable=BIGTABLE(sort(idx),:);
 % ReducedBigTable = sortrows(ReducedBigTable,'expected')
-
 save PAL_ReducedBigTable.mat ReducedBigTable
 
 
 % verify memorability
 allacc=[ReducedBigTable.correct{1:end}];allacc=allacc>0;
-for iw=1:length(uniqueresponsewords) 
+for iw=1:length(uniqueresponsewords)
     uniquewordMemorabilityverify(iw)=mean(allacc(ismember(ReducedBigTable.expected,uniqueresponsewords(iw))));
 end
 load('PAL_Memo_PALRAM.mat')
