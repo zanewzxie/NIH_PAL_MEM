@@ -51,6 +51,20 @@ load('/Volumes/Zane/NIH_HPC/NIH_PAL_Mem/NIH_PAL_MEM/PAL_ReducedBigTable.mat')
 
 ReducedBigTable=table2struct(ReducedBigTable);
 
+includedWord = PAL_Memo.Responsememorability ~= median(PAL_Memo.Responsememorability);
+PALMemLabels = PAL_Memo.Responsememorability > median(PAL_Memo.Responsememorability);
+
+T=array2table([Glove_PAL.Feature(includedWord,:) PALMemLabels(includedWord)]);
+
+for iter=1:10
+[trainedClassifier, validationAccuracy,AUC(iter)] = trainClassifier_svm_guassian(T);
+
+T_sh=array2table([Glove_PAL.Feature(includedWord,:) Shuffle(PALMemLabels(includedWord))]);
+[trainedClassifier, validationAccuracy,AUC_sh(iter)] = trainClassifier_svm_guassian(T_sh);
+end
+
+
+%%
 % fixed beta 
 IncludedW=1:300;
 S_j_i=squareform(1-pdist(Glove_PAL.Feature, 'cosine'));
@@ -104,8 +118,9 @@ Mem_Presented=meanstrength;
 save ModelPredictedMem.mat Mem_Full Mem_Presented
 
 %% == 4. GLOVE Online study
+clear targetperfdata
 
-load('/Volumes/Zane/NIH_HPC/NIH_PAL_Mem/Scripts/1_WordFeatures/Onlinedata/onlinememorydata-041619.mat')
+load('/Volumes/Zane/NIH_HPC/NIH_PAL_Mem/Scripts/1_WordFeatures/Onlinedata/onlinememorydata-042619.mat')
 
 targetperfdata.DART
 
@@ -113,6 +128,7 @@ uniqueprobewords = textread('RAM_wordpool.txt', '%s', 'delimiter', '\n', 'whites
 uniqueresponsewords=uniqueprobewords;
 
 fnames = fieldnames(targetperfdata);
+clear AMT_MemScore
 
 for iw=1:length(uniqueresponsewords)
     
@@ -121,7 +137,7 @@ for iw=1:length(uniqueresponsewords)
     fieldval = getfield(targetperfdata,fnames{curInX});  
     AMT_MemScore(iw)=fieldval.hr;
 
-    
+%     
 %     fieldval2 = getfield(intrusioncounts,fnames{curInX});
 %     AMT_IntrusionCount(iw)=fieldval2;
 end

@@ -159,7 +159,7 @@ for isubtem=1:length(ToAnalyzeSub) %1:length(allsub)
 
     if size(SubjTable(isub).PALTable,1)>1
         
-        %Intrusion. 
+        %Intrusion counts
         MissRetrievedWords=[SubjTable(isub).PALTable.response(~[SubjTable(isub).PALTable.correct{1:end}])];
         for i=1:length(MissRetrievedWords)
             if strcmp(num2str(MissRetrievedWords{i}),'-999')| strcmp(MissRetrievedWords{i},'<>')
@@ -206,38 +206,38 @@ for isubtem=1:length(ToAnalyzeSub) %1:length(allsub)
 
         % Retrieval RTs. 
         % extrace the memorability score for each retrieval word. 
-        clear Acc RT highmask lowmask memorability SDRT MemorabilityAccResponseWords
+        clear Acc RT highmask lowmask memorability SDRT MemorabilityActualResponseWords
         Acc=[SubjTable(isub).PALTable.correct{1:end}]>0;
         RT=[SubjTable(isub).PALTable.RT{1:end}];
-        AccResponseWords= ([SubjTable(isub).PALTable.response]); 
-        AccResponseWords=AccResponseWords(RT>0);
+        ActualResponseWords= ([SubjTable(isub).PALTable.response]); 
+        ActualResponseWords=ActualResponseWords(RT>0);
         
         RemainedRT = RT(RT>0);
         
         RTSD = std(RT(RT >0));
-        for i=1:length(AccResponseWords)
-            if strcmp(num2str(AccResponseWords{i}),'-999')| strcmp(AccResponseWords{i},'<>')
-                AccResponseWords{i} = 'NORESPONSE';
+        for i=1:length(ActualResponseWords)
+            if strcmp(num2str(ActualResponseWords{i}),'-999')| strcmp(ActualResponseWords{i},'<>')
+                ActualResponseWords{i} = 'NORESPONSE';
             end
         end
         
-        clear MemorabilityAccResponseWords
+        clear MemorabilityActualResponseWords
         
-        for iq=1:length(AccResponseWords)
-            if  any(ismember(uniquewordsID_10,AccResponseWords(iq)))
-                MemorabilityAccResponseWords(iq)= PAL_Memo.Responsememorability(ismember(uniquewordsID_10,AccResponseWords(iq)));
+        for iq=1:length(ActualResponseWords)
+            if  any(ismember(uniquewordsID_10,ActualResponseWords(iq)))
+                MemorabilityActualResponseWords(iq)= PAL_Memo.Responsememorability(ismember(uniquewordsID_10,ActualResponseWords(iq)));
             else
-                MemorabilityAccResponseWords(iq)=NaN;
+                MemorabilityActualResponseWords(iq)=NaN;
             end
         end
 
-        cormask = ~isnan(MemorabilityAccResponseWords);
-        Correlation_MRT_s(isub)=corr(MemorabilityAccResponseWords(cormask)',log(RemainedRT(cormask))','type','pearson');
+        cormask = ~isnan(MemorabilityActualResponseWords);
+        Correlation_MRT_s(isub)=corr(MemorabilityActualResponseWords(cormask)',log(RemainedRT(cormask))','type','Pearson');
         countN(isub)=sum(cormask);
         Acc_ofsub(isub)=mean(Acc);
         
         MemRTs(isub) = median(RT(cormask));
-        x=MemorabilityAccResponseWords(cormask);
+        x=MemorabilityActualResponseWords(cormask);
         y=log(RemainedRT(cormask));
 %         
 %         figure(101);
@@ -268,17 +268,92 @@ IncludedMemRTs = MemRTs(IncludeIDRT);
 [h,z,ci]=signrank(MemorabilityMisReportMean(~isnan(MemorabilityMisReportMean)),medianMemor)
 toincludeid=find(~isnan(MemorabilityMisReportMean));
 
+Correlation_MRT_s=fisherz(Correlation_MRT_s);
 
 nter=2000;
+clear boostrap_Corr_RT boostrap_median_IntrusionMemo
 for i=1:nter
-   boostrap_median(i)= median(MemorabilityMisReportMean(randsample(toincludeid,length(toincludeid),'true')));
-   boostrap_medianRT(i,:)= mean(MemRTs(randsample(IncludeIDRT,length(IncludeIDRT),'true')));
+   boostrap_median_IntrusionMemo(i)= median(MemorabilityMisReportMean(randsample(toincludeid,length(toincludeid),'true')));
+   boostrap_Corr_RT(i,:)= mean(Correlation_MRT_s(randsample(IncludeIDRT,length(IncludeIDRT),'true')));
+   
 end
-p=1-sum((boostrap_median-medianMemor)>0)/nter
+p_intrusion=1-sum((boostrap_median_IntrusionMemo-medianMemor)>0)/nter
+p_RT=sum(boostrap_Corr_RT>0)/nter
 
-figure;hist(boostrap_median,11)
-hold on;plot([ medianMemor medianMemor], [0 200],'r-','linewidth',5)
+figure;
+subplot(1,2,1)
+hist(boostrap_median_IntrusionMemo,11);title('Memorability and Intrusion')
+hold on;plot([ medianMemor medianMemor], [0 700],'r--','linewidth',1)
+xlabel({'Boostrapped Average Memorability';'of Intruded Words'})
+ylabel('Count across 2000 iterations')
+axis([0.34 0.4 0 600]);
 
+subplot(1,2,2)
+hist(boostrap_Corr_RT,11);title('Memorability and RT')
+hold on;plot([ 0 0], [0 700],'r--','linewidth',1)
+xlabel({'Boostrapped Average Correlation';'Between Memorability and RT of Reported Words'})
+ylabel('Count across 2000 iterations')
+axis([-0.15 0.05 0 600]);
+
+%% create publication quality figure
+
+nsub=sum(~isnan(MemorabilityMisReportMean));
+figure('units','inch','position',[4,5,10,4],'PaperOrientation','landscape')
+subplot(1,2,1);
+hold on
+b=bar(mean(boostrap_median_IntrusionMemo),'FaceColor',[1 1 1]);
+set(get(b,'Children'),'FaceAlpha',0.5)
+plot1=plot(randsample([-1:0.01:1],nsub,'true')*0.08+1,MemorabilityMisReportMean(~isnan(MemorabilityMisReportMean)),'o','MarkerFaceColor',[0.8 0.8 0.8],'MarkerEdgeColor',[0.7 0.7 0.7]);
+plot1.Color(4) = 0.2
+axis([0 2 0.25 0.45]);
+set(gca,'xtick',[])
+set(gca,'ytick',[0.3  0.4])
+
+errorbar(mean(boostrap_median_IntrusionMemo),std(boostrap_median_IntrusionMemo),'k','linewidth',3)
+hold on;
+plot([0 2],[ medianMemor medianMemor],'r--','linewidth',1)
+title({'Subject-level Mean Memorability'; 'Score of Intruded Words'})
+ylabel('Memorability Score')
+
+
+subplot(1,2,2);
+histogram(boostrap_median_IntrusionMemo,11,'FaceColor',[0.8 0.8 0.8]);title('Memorability and Intrusion')
+hold on;plot([ medianMemor medianMemor], [0 700],'r--','linewidth',1)
+xlabel({'Boostrapped Mean Memorability';'Score of Intruded Words'})
+ylabel('Count across 2000 iterations')
+axis([0.34 0.4 0 600]);
+
+print(gcf,fullfile([pwd '/Stats/'],'Memo_Intrusion.pdf'),'-dpdf');
+
+
+%%
+nsub=length(IncludeIDRT);
+figure('units','inch','position',[4,5,10,4],'PaperOrientation','landscape')
+subplot(1,2,1);
+hold on
+b=bar(mean(boostrap_Corr_RT),'FaceColor',[1 1 1]);
+set(get(b,'Children'),'FaceAlpha',0.5)
+plot1=plot(randsample([-1:0.01:1],nsub,'true')*0.08+1,Correlation_MRT_s(IncludeIDRT),'o','MarkerFaceColor',[0.8 0.8 0.8],'MarkerEdgeColor',[0.7 0.7 0.7]);
+plot1.Color(4) = 0.2
+axis([0 2 -0.55 0.55]); 
+set(gca,'xtick',[])
+set(gca,'ytick',[-0.3 0 0.3])
+
+errorbar(mean(boostrap_Corr_RT),std(boostrap_Corr_RT),'k','linewidth',2,'CapSize',8)
+hold on;
+% plot([0 2],[ medianMemor medianMemor],'r--','linewidth',1)
+title({'Subject-level Correlation between'; 'Memorability and RT of Reported Words'})
+ylabel('Z-transformed Correlation')
+
+
+subplot(1,2,2);
+histogram(boostrap_Corr_RT,11,'FaceColor',[0.8 0.8 0.8]);title('Memorability and RT')
+hold on;plot([ 0 0], [0 700],'r--','linewidth',1)
+xlabel({'Boostrapped Mean Correlation (Z-transformed)';'between Memorability and RT of Reported Words'})
+ylabel('Count across 2000 iterations')
+axis([-0.2 0.1 0 600]);
+
+print(gcf,fullfile([pwd '/Stats/'],'Memo_RT.pdf'),'-dpdf');
 
 %%
 

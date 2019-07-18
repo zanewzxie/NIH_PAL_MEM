@@ -12,7 +12,7 @@ dat <- read.csv("5_Meta_Reinstate_Mem_Early.csv",header=TRUE);
 res <- rma(measure="ZCOR", ri=dat$ri, ni=dat$ni, method="FE") ### use r-to-z transformed correlations
 funnel(res, yaxis="sei")
 forest(res, slab=paste("NIH",dat$SubjID,"(",dat$Trials,")"),xlim=c(-1.8,1.8),alim=c(-1,1), ylim=c(-1.8, 22))  # ylim=c(-4.5, 12) for smaller table; ylim=c(-2, 21.8) for large table
-res <- rma(measure="ZCOR", ri=dat$ri, ni=dat$ni, method="REML") ### use r-to-z transformed correlations
+res <- rma(measure="ZCOR", ri=dat$ri, ni=dat$ni, method="ML") ### use r-to-z transformed correlations
 addpoly(res,cex=1)
 
 text(-0.6,  20.8, "StudyID (#of Intrusion Trials)",  pos=2)

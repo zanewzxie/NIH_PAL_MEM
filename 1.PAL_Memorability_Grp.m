@@ -225,7 +225,7 @@ clear PAL_Memo
 k=1;excludeword=[];
 for iw=1:length(uniqueprobewords)
     countallwordsubcombination(iw)=sum(uniqueprobe_subID_uniqueword(iw,:));
-    if sum(uniqueprobe_subID_uniqueword(iw,:))<10
+    if sum(uniqueprobe_subID_uniqueword(iw,:))<9
     excludeword(k)=iw;
     k=k+1;
     end
@@ -290,9 +290,9 @@ for iter=1:nter
    Response_probe_CorrelationFold(iter)=2*Response_probe_CorrelationFold(iter)/(Response_probe_CorrelationFold(iter)+1);
    
 end
-p1 = sum(ProbeCorrelationFold<=0)/nter
-p2 = sum(ResponseCorrelationFold<=0)/nter
-p3 = sum(Response_probe_CorrelationFold<=0)/nter
+p1 = sum(ProbeCorrelationFold<0)/nter
+p2 = sum(ResponseCorrelationFold<0)/nter
+p3 = sum(Response_probe_CorrelationFold<0)/nter
 
 % Probememorability = mean(uniqueprobe_subID_uniqueword_SUBwordreduced,2) .* (sum(uniqueprobe_subID_uniqueword_SUBwordreduced_acc,2)./sum(uniqueprobe_subID_uniqueword_SUBwordreduced,2));
 % Responsememorability = mean(uniqueresponse_subID_uniqueword_SUBwordreduced,2) .* (sum(uniqueresponse_subID_uniqueword_SUBwordreduced_acc,2)./sum(uniqueresponse_subID_uniqueword_SUBwordreduced,2));
@@ -403,9 +403,14 @@ title('Word as probe word')
 xlabel('Spearman correlation')
 ylabel('Count')
 axis([-0.5 0.5 0 200]);
-txt = ['p1 = ' num2str(p1)];
-text(0.3,150,txt)
+txt = ['p1 = ' num2str(p1*2)];
 hold on;plot([0 0],[0 200],'-r')
+text(0,180,txt)
+txt = ['mean = ' num2str(mean(ProbeCorrelationFold))];
+text(0,150,txt)
+txt = ['95%CI = ' num2str(prctile(ProbeCorrelationFold,[2.5 97.5]))];
+text(0,120,txt)
+% mean(ProbeCorrelationFold) prctile(ProbeCorrelationFold,[2.5 97.5])
  
 subplot(3,2,3);
 scatter(XX1,XX2,'filled','MarkerFaceAlpha',0.2)
@@ -420,8 +425,14 @@ xlabel('Spearman correlation')
 ylabel('Count');
  hold on;plot([0 0],[0 200],'-r')
 axis([-0.5 0.5 0 200]);
-txt = ['p2 = ' num2str(p2)];
-text(0.3,150,txt)
+txt = ['p2 = ' num2str(p2*2)];
+text(0,180,txt)
+txt = ['mean = ' num2str(mean(ResponseCorrelationFold))];
+text(0,150,txt)
+txt = ['95%CI = ' num2str(prctile(ResponseCorrelationFold,[2.5 97.5]))];
+text(0,120,txt)
+% mean(ResponseCorrelationFold) prctile(ResponseCorrelationFold,[2.5 97.5])
+
 
 subplot(3,2,5);
 scatter(XY1,XY2,'filled','MarkerFaceAlpha',0.2)
@@ -435,8 +446,12 @@ title('Response-Probe')
 xlabel('Spearman correlation')
 ylabel('Count')
 axis([-0.5 0.5 0 200])
-txt = ['p3 = ' num2str(p3)];
-text(0.3,150,txt)
- hold on;plot([0 0],[0 200],'-r')
+txt = ['p3 = ' num2str(p3*2)];
+hold on;plot([0 0],[0 200],'-r')
+text(0,180,txt)
+txt = ['mean = ' num2str(mean(Response_probe_CorrelationFold))];
+text(0,150,txt)
+txt = ['95%CI = ' num2str(prctile(Response_probe_CorrelationFold,[2.5 97.5]))];
+text(0,120,txt)
 
 print('item_subj_split-half4.pdf','-dpdf','-bestfit');
